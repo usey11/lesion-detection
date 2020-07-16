@@ -89,6 +89,8 @@ def main(argv):
     dataset_val.load_moles("../ISIC-Archive-Downloader/Data/val")
     dataset_val.prepare()
 
+    print(len(dataset_val.image_ids))
+
 
     model = modellib.MaskRCNN(mode="inference", 
                           config=inference_config,
@@ -100,11 +102,28 @@ def main(argv):
     else:
         metrics_file = open(metrics_file_path, "a+")
         metrics_file.write("file, missing_predictions, mAP, accuracy")
+
+    
+    model_files = []
     for arg in argv:
-        if not os.path.isfile(arg):
+        # If arg is a directory get all files in directory with .h5 extension
+        if os.path.isdir(arg):
+            path_files = os.listdir(arg)
+
+            for pf in path_files:
+                if pf[-3:] == ".h5":
+                    model_files.append(os.path.join(arg, pf))
+        elif os.path.isfile(arg) and arg[-3:] == ".h5":
+            model_files.append(arg)
+        else:
+            print("File: " + arg, " doesn't exist.")
+            continue
+    for f in model_files:
+        if not os.path.isfile(f):
+            print("File: " + f, " doesn't exist.")
             continue
 
-        model_path  = arg
+        model_path  = f
         print("Evaluating model: " + model_path)
 
         print("Loading weights from ", model_path)
