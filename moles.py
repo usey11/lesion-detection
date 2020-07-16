@@ -37,7 +37,7 @@ class MolesConfig(Config):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.6
+    DETECTION_MIN_CONFIDENCE = 0.5
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 100
