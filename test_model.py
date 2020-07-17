@@ -23,6 +23,8 @@ from moles import MolesDataset
 from moles import BalancedDataset
 from moles import MolesDatasetFast
 
+from sklearn.metrics import confusion_matrix, auc, roc_curve, accuracy_score, precision_recall_curve, roc_auc_score
+
 # Root directory of the project
 ROOT_DIR = os.path.abspath("./")
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -39,6 +41,28 @@ class InferenceConfig(MolesConfig):
     IMAGES_PER_GPU = 1
 
 inference_config = InferenceConfig()
+
+def get_metrics(y,y_pred):
+
+    if type(y) == type([]):
+        y = np.array(y)
+
+    if type(y_pred) == type([]):
+        y_pred = np.array(y_pred)
+        
+    tp, fp, fn, tn = confusion_matrix(y,y_pred).ravel()
+    metrics = {}
+    metrics["acc"] = (((y_pred) == y).sum()/len(y)) #Accuracy
+    try:
+        metrics["auc"] = roc_auc_score(y,y_pred) # AUC
+    except ValueError:
+        metrics["auc"] = 0
+    metrics["sensitivity"] = (tp/(tp+fn))#sensitivity
+    metrics["specificity"] = (tn/(tn+fp))#specificity
+    #metrics.append(tp/(tp+fn))#tpr
+    #metrics.append(fp/(fp+tn))#fpr
+
+    return metrics
 
 def eval_model(model, dataset):
     image_ids = dataset.image_ids
@@ -71,7 +95,10 @@ def eval_model(model, dataset):
         if len(r["scores"]) != 0:
             preds.append(r["class_ids"][r["scores"].argmax()])
         else:
-            preds.append(-1)
+            if (gt_class_id[0] == 1):
+                preds.append(2)
+            else:
+                preds.append(1)
     
     return APs, preds, gts
 
@@ -150,6 +177,11 @@ def main(argv):
         print("mAP: ", mAP)
         print("Accuracy: {}%".format(accuracy))
         print()
+        
+        metrics = get_metrics(gts, preds)
+
+        for m in metrics:
+            print("{}: {}".format(m, metrics[m]))
 
         # Write to metrics file
         metrics_file.write("{},{},{},{}\n".format(model_path, missing_percentage, mAP, accuracy))
