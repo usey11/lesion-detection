@@ -4,6 +4,7 @@ import cv2
 import json
 import skimage
 import numpy as np
+import pandas as pd
 
 from mrcnn.config import Config
 from mrcnn import utils
@@ -44,6 +45,8 @@ class MolesConfig(Config):
 
     # Validation steps at end of epoch
     VALIDATION_STEPS = 5
+
+config = MolesConfig()
 
 class MolesDataset(utils.Dataset):
     def load_moles(self, data_path):
@@ -92,7 +95,7 @@ class MolesDataset(utils.Dataset):
         mask_path = info["mask_path"]
         
         mask = cv2.imread(mask_path)
-        mask = cv2.resize(mask, (256, 256))
+        mask = cv2.resize(mask, (config.IMAGE_MIN_DIM, config.IMAGE_MIN_DIM))
         mask = mask[:,:,0] > 11
         mask = mask[...,np.newaxis]
         
@@ -149,7 +152,7 @@ class MolesDatasetFast(MolesDataset):
         
         # Load image
         image = skimage.io.imread(self.image_info[image_id]['path'])
-        image = cv2.resize(image, (256,256))
+        image = cv2.resize(image, (config.IMAGE_MIN_DIM, config.IMAGE_MIN_DIM))
         
         # Add to dict
         self.images[image_id] = image
@@ -240,3 +243,41 @@ class BalancedDatasetFast(BalancedDataset):
         self.masks[image_id] = mask
 
         return mask
+
+class ISIC17Dataset(MolesDatasetFast):
+     def load_moles(self, data_path):
+        # Add classes
+        self.add_class("moles", 1, "nevus")
+        self.add_class("moles", 2, "melanoma")
+        self.add_class("moles", 3, "seborrheic_keratosis")
+        
+        classes = {1:"nevus", 2:"melanoma", 3:"seborrheic_keratosis"}
+        if not os.path.exists(data_path):
+            raise Exception(data_path + " Does not exists")
+            
+        ground_truth_file = os.path.join(data_path, "../", "ISIC-2017_Training_Part3_GroundTruth.csv")
+        ground_truth_data = pd.read_csv(ground_truth_file)
+
+        images_path = os.path.join(data_path, "images")
+        masks_path = os.path.join(data_path, "masks")
+
+        for filename in os.listdir(images_path):
+            #TODO Use real image ids
+            #data = json.load(open(os.path.join(data_path,"Descriptions",filename)))
+            
+            image_id = int(filename[-11:-4])
+            image_name = filename[:12]
+            
+            image_filename = os.path.join(images_path, image_name + ".jpg")
+            if not os.path.isfile(image_filename):
+                continue
+                
+            mask_filename = os.path.join(masks_path, image_name + "_segmentation.png")
+            if not os.path.isfile(mask_filename):
+                continue
+
+                
+            image_info = ground_truth_data[ground_truth_data["image_id"] == image_name]
+            label = int((image_info["melanoma"] * 1 + image_info["seborrheic_keratosis"] * 2) + 1)
+
+            self.add_image("moles", image_id, path=image_filename, mask_path=mask_filename,mole_type=classes[label])
