@@ -19,10 +19,10 @@ class MolesConfig(Config):
     # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 8 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 8
+    IMAGES_PER_GPU = 16
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 2  # background + malignant + benign
+    NUM_CLASSES = 1 + 3  # background + nevus + melanoma + sk
 
     # Uses small images for faster training. Set the limits of the small side
     # the large side, and that determines the image shape.
@@ -34,17 +34,25 @@ class MolesConfig(Config):
 
     # Reduce training ROIs per image because the images are small and have
     # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 32
+    TRAIN_ROIS_PER_IMAGE = 64
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.5
+    DETECTION_MIN_CONFIDENCE = 0.7
 
     # Number of training steps per epoch
-    STEPS_PER_EPOCH = 100
+    STEPS_PER_EPOCH = 500
 
     # Validation steps at end of epoch
     VALIDATION_STEPS = 5
+
+    LOSS_WEIGHTS = {
+        "rpn_class_loss": 1.,
+        "rpn_bbox_loss": 1.,
+        "mrcnn_class_loss": 10.,
+        "mrcnn_bbox_loss": 1.,
+        "mrcnn_mask_loss": 1.
+    }
 
 config = MolesConfig()
 
@@ -279,5 +287,42 @@ class ISIC17Dataset(MolesDatasetFast):
                 
             image_info = ground_truth_data[ground_truth_data["image_id"] == image_name]
             label = int((image_info["melanoma"] * 1 + image_info["seborrheic_keratosis"] * 2) + 1)
+
+            self.add_image("moles", image_id, path=image_filename, mask_path=mask_filename,mole_type=classes[label])
+
+class ISIC17AugDataset(MolesDatasetFast):
+    def load_moles(self, data_path):
+        # Add classes
+        self.add_class("moles", 1, "nevus")
+        self.add_class("moles", 2, "melanoma")
+        self.add_class("moles", 3, "seborrheic_keratosis")
+        
+        classes = {1:"nevus", 2:"melanoma", 3:"seborrheic_keratosis"}
+        if not os.path.exists(data_path):
+            raise Exception(data_path + " Does not exists")
+            
+        ground_truth_file = os.path.join(data_path, "labels.csv")
+        ground_truth_data = pd.read_csv(ground_truth_file)
+
+        images_path = os.path.join(data_path, "images")
+        masks_path = os.path.join(data_path, "masks")
+
+        for filename in os.listdir(images_path):
+            #TODO Use real image ids
+            
+            image_id = int(filename[-11:-4])
+            image_name = filename[:12]
+            
+            image_filename = os.path.join(images_path, image_name + ".jpg")
+            if not os.path.isfile(image_filename):
+                continue
+                
+            mask_filename = os.path.join(masks_path, image_name + "_segmentation.png")
+            if not os.path.isfile(mask_filename):
+                continue
+
+                
+            image_info = ground_truth_data[ground_truth_data["image_id"] == image_name]
+            label = int(image_info["label"])
 
             self.add_image("moles", image_id, path=image_filename, mask_path=mask_filename,mole_type=classes[label])
