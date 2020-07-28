@@ -1099,6 +1099,10 @@ def mrcnn_class_loss_graph(target_class_ids, pred_class_logits,
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=target_class_ids, logits=pred_class_logits)
 
+    #weights = tf.constant([1.0,1.0,5.0,6.0], dtype="float32")
+    #w = tf.gather(weights, target_class_ids)
+    #loss = loss * w
+
     # Erase losses of predictions of classes that are not in the active
     # classes of the image.
     loss = loss * pred_active
@@ -1236,8 +1240,8 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
         # Some, such as Affine, have settings that make them unsafe, so always
         # test your augmentation on masks
         MASK_AUGMENTERS = ["Sequential", "SomeOf", "OneOf", "Sometimes",
-                           "Fliplr", "Flipud", "CropAndPad",
-                           "Affine", "PiecewiseAffine"]
+                            "Fliplr", "Flipud", "CropAndPad",
+                            "Affine", "PiecewiseAffine", "Rot90", "CoarseDropout"]
 
         def hook(images, augmenter, parents, default):
             """Determines which augmenters to apply to masks."""
@@ -2370,8 +2374,8 @@ class MaskRCNN():
             validation_data=val_generator,
             validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
-            workers=workers,
-            use_multiprocessing=True,
+            workers=1,
+            use_multiprocessing=False,
         )
         self.epoch = max(self.epoch, epochs)
 
