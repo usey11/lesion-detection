@@ -24,12 +24,12 @@ from moles import BalancedDataset
 from moles import MolesDatasetFast
 from moles import ISIC17Dataset
 
-from sklearn.metrics import confusion_matrix, auc, roc_curve, accuracy_score, precision_recall_curve, roc_auc_score
+from sklearn.metrics import confusion_matrix, auc, roc_curve, accuracy_score, precision_recall_curve, roc_auc_score, jaccard_score
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("./")
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
-metrics_file_path = os.path.join(MODEL_DIR, "metrics17")
+metrics_file_path = os.path.join(MODEL_DIR, "metrics17.csv")
 #from mrcnn.config import Config
 #from mrcnn import utils
 #import mrcnn.model as modellib
@@ -73,6 +73,7 @@ def eval_model(model, dataset):
     Rs = []
     preds = []
     gts = []
+    ious = []
 
     for image_id in tqdm(image_ids):
         # Load image and ground truth data
@@ -95,12 +96,16 @@ def eval_model(model, dataset):
         gts.append(gt_class_id[0])
         if len(r["scores"]) != 0:
             preds.append(r["class_ids"][r["scores"].argmax()])
+            pred_mask = r["masks"][:,:,r["scores"].argmax()]
+            js = jaccard_score(gt_mask.flatten(), pred_mask.flatten())
+            ious.append(js)
         else:
             preds.append(-1)
+            ious.append(0)
 
         
     
-    return APs, preds, gts
+    return APs, ious, preds, gts
 
 def test_model(model_path, dataset):
     model = modellib.MaskRCNN(mode="inference", 
@@ -163,7 +168,7 @@ def main(argv):
         metrics_file = open(metrics_file_path, "a+")
     else:
         metrics_file = open(metrics_file_path, "a+")
-        metrics_file.write("file, missing_predictions, mAP, accuracy")
+        metrics_file.write("file,missing_predictions,mAP,accuracy,jaccard_index")
 
     
     model_files = []
@@ -193,24 +198,22 @@ def main(argv):
 
         print("Evaluating on val set")
 
-        (APs, preds, gts) = eval_model(model, dataset_val)
+        (APs, ious, preds, gts) = eval_model(model, dataset_val)
 
         df = pd.DataFrame({"gts": gts, "preds": preds})
-        
-        print(df.head())
-
         total_preds = len(df)
-
         missing_preds = len(df[df["preds"] == -1])
         missing_percentage = (missing_preds/total_preds) * 100
-
         correct_preds = len(df[df["gts"] == df["preds"]])
         accuracy = (correct_preds/total_preds) * 100
-
         mAP = np.mean(APs)
+        jaccard_mean = np.mean(ious)
+
+
         print("Missing predictions: {}, ({:.2f}%)".format(missing_preds, missing_percentage))
         print("mAP: ", mAP)
         print("Accuracy: {}%".format(accuracy))
+        print("Jaccard Index: {}".format(jaccard_mean))
         print()
         
         #metrics = get_metrics(gts, preds)
@@ -219,7 +222,7 @@ def main(argv):
         #    print("{}: {}".format(m, metrics[m]))
 
         # Write to metrics file
-        metrics_file.write("{},{},{},{}\n".format(model_path, missing_percentage, mAP, accuracy))
+        metrics_file.write("{},{},{},{},{}\n".format(model_path, missing_percentage, mAP, accuracy, jaccard_mean))
 
 
 
