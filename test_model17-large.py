@@ -18,18 +18,19 @@ import mrcnn.model as modellib
 from mrcnn import visualize
 from mrcnn.model import log
 
-from moles import MolesConfig
-from moles import MolesDataset
-from moles import BalancedDataset
-from moles import MolesDatasetFast
-from moles import ISIC17Dataset
+from moles_large import MolesConfig
+from moles_large import MolesDataset
+from moles_large import BalancedDataset
+from moles_large import MolesDatasetFast
+from moles_large import ISIC17Dataset
+from moles_large import ISIC17AugDataset
 
 from sklearn.metrics import confusion_matrix, auc, roc_curve, accuracy_score, precision_recall_curve, roc_auc_score, jaccard_score
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("./")
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
-metrics_file_path = os.path.join(MODEL_DIR, "metrics17.csv")
+metrics_file_path = os.path.join(MODEL_DIR, "metrics17final.csv")
 #from mrcnn.config import Config
 #from mrcnn import utils
 #import mrcnn.model as modellib
@@ -40,6 +41,7 @@ metrics_file_path = os.path.join(MODEL_DIR, "metrics17.csv")
 class InferenceConfig(MolesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
+    DETECTION_MIN_CONFIDENCE = 0.01
 
 inference_config = InferenceConfig()
 
@@ -152,8 +154,8 @@ def main(argv):
     #dataset_train.load_moles("../ISIC-Archive-Downloader/Data/train")
     #dataset_train.prepare()
 
-    dataset_val = ISIC17Dataset()
-    dataset_val.load_moles("data/val")
+    dataset_val = ISIC17AugDataset()
+    dataset_val.load_moles("data/large/val")
     dataset_val.prepare()
 
     print(len(dataset_val.image_ids))
@@ -168,7 +170,7 @@ def main(argv):
         metrics_file = open(metrics_file_path, "a+")
     else:
         metrics_file = open(metrics_file_path, "a+")
-        metrics_file.write("file,missing_predictions,mAP,accuracy,jaccard_index")
+        metrics_file.write("file,missing_predictions,mAP,accuracy,jaccard_index\n")
 
     
     model_files = []
@@ -208,12 +210,15 @@ def main(argv):
         accuracy = (correct_preds/total_preds) * 100
         mAP = np.mean(APs)
         jaccard_mean = np.mean(ious)
+        
+        #AUC = roc_auc_score(gts, preds)
 
 
         print("Missing predictions: {}, ({:.2f}%)".format(missing_preds, missing_percentage))
         print("mAP: ", mAP)
         print("Accuracy: {}%".format(accuracy))
         print("Jaccard Index: {}".format(jaccard_mean))
+        #print("AUC: {}".format(AUC))
         print()
         
         #metrics = get_metrics(gts, preds)

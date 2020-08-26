@@ -38,7 +38,7 @@ class MolesConfig(Config):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.4
+    DETECTION_MIN_CONFIDENCE = 0.3
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 400
@@ -49,7 +49,7 @@ class MolesConfig(Config):
     LOSS_WEIGHTS = {
         "rpn_class_loss": 1.,
         "rpn_bbox_loss": 1.,
-        "mrcnn_class_loss": 20.,
+        "mrcnn_class_loss": 10.,
         "mrcnn_bbox_loss": 1.,
         "mrcnn_mask_loss": 1.
     }

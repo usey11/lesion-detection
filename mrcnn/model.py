@@ -1241,7 +1241,7 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
         # test your augmentation on masks
         MASK_AUGMENTERS = ["Sequential", "SomeOf", "OneOf", "Sometimes",
                             "Fliplr", "Flipud", "CropAndPad",
-                            "Affine", "PiecewiseAffine", "Rot90", "CoarseDropout"]
+                            "Affine", "PiecewiseAffine", "Rot90", "CoarseDropout", "ElasticTransformation"]
 
         def hook(images, augmenter, parents, default):
             """Determines which augmenters to apply to masks."""

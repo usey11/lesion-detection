@@ -18,18 +18,19 @@ import mrcnn.model as modellib
 from mrcnn import visualize
 from mrcnn.model import log
 
-from moles import MolesConfig
-from moles import MolesDataset
-from moles import BalancedDataset
-from moles import MolesDatasetFast
-from moles import ISIC17Dataset
+from moles_large import MolesConfig
+from moles_large import MolesDataset
+from moles_large import BalancedDataset
+from moles_large import MolesDatasetFast
+from moles_large import ISIC17Dataset
+from moles_large import ISIC17AugDataset
 
 from sklearn.metrics import confusion_matrix, auc, roc_curve, accuracy_score, precision_recall_curve, roc_auc_score, jaccard_score
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("./")
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
-metrics_file_path = os.path.join(MODEL_DIR, "metrics17.csv")
+metrics_file_path = os.path.join(MODEL_DIR, "metrics17-test.csv")
 #from mrcnn.config import Config
 #from mrcnn import utils
 #import mrcnn.model as modellib
@@ -40,6 +41,7 @@ metrics_file_path = os.path.join(MODEL_DIR, "metrics17.csv")
 class InferenceConfig(MolesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
+    DETECTION_MIN_CONFIDENCE = 0.3
 
 inference_config = InferenceConfig()
 
@@ -146,17 +148,21 @@ def main(argv):
     if len(argv) == 0:
         print("Usage: python test_model.py model_paths")
         quit()
-
+    print("Config: {}".format(inference_config.MEAN_PIXEL))
     # Load in Datasets
     #dataset_train = MolesDataset()
     #dataset_train.load_moles("../ISIC-Archive-Downloader/Data/train")
     #dataset_train.prepare()
 
-    dataset_val = ISIC17Dataset()
-    dataset_val.load_moles("data/val")
-    dataset_val.prepare()
+    #dataset_val = ISIC17AugDataset()
+    #dataset_val.load_moles("data/large/val")
+    #dataset_val.prepare()
+    
+    dataset_test = ISIC17AugDataset()
+    dataset_test.load_moles("data/large/test")
+    dataset_test.prepare()
 
-    print(len(dataset_val.image_ids))
+    print(len(dataset_test.image_ids))
 
 
     model = modellib.MaskRCNN(mode="inference", 
@@ -198,7 +204,7 @@ def main(argv):
 
         print("Evaluating on val set")
 
-        (APs, ious, preds, gts) = eval_model(model, dataset_val)
+        (APs, ious, preds, gts) = eval_model(model, dataset_test)
 
         df = pd.DataFrame({"gts": gts, "preds": preds})
         total_preds = len(df)

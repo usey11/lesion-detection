@@ -19,7 +19,7 @@ class MolesConfig(Config):
     # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 8 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 8
+    IMAGES_PER_GPU = 4
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 3  # background + nevus + melanoma + sk
@@ -38,7 +38,7 @@ class MolesConfig(Config):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.7
+    DETECTION_MIN_CONFIDENCE = 0.8
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 400
@@ -53,6 +53,8 @@ class MolesConfig(Config):
         "mrcnn_bbox_loss": 1.,
         "mrcnn_mask_loss": 1.
     }
+    
+    MEAN_PIXEL = np.array([180.4, 150.8, 139.4])
 
 config = MolesConfig()
 
